@@ -273,6 +273,9 @@ def login_face(payload: LoginFaceRequest, db: Session = Depends(get_db)):
             return {"error": "Exactly one face required"}
 
         encodings = face_recognition.face_encodings(rgb_image, face_locations)
+        if len(encodings) != 1:
+            return {"error": "Face encoding failed"}
+
         embeddings.append(encodings[0])
 
     if not embeddings:
