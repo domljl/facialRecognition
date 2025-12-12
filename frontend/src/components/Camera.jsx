@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-export default function Camera({ onCapture, buttonText }) {
+export default function Camera({ onCapture, buttonText, disabled = false }) {
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
 
@@ -39,21 +39,28 @@ export default function Camera({ onCapture, buttonText }) {
     };
 
     return (
-        <div className="relative space-y-4">
-            {/* Camera */}
-            <video ref={videoRef} autoPlay playsInline className="w-full rounded-xl" />
+        <div className="space-y-4">
+            <div className="relative w-full">
+                <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    className="w-full aspect-3/4 object-cover rounded-2xl border border-slate-200 shadow-sm"
+                    style={{ transform: "scaleX(-1)" }} // mirror preview
+                />
 
-            {/* Face guide overlay */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-48 h-64 border-4 border-blue-400 rounded-xl opacity-70"></div>
+                {/* Face guide overlay */}
+                <div className="pointer-events-none absolute inset-3 flex items-center justify-center">
+                    <div className="w-40 h-56 sm:w-48 sm:h-64 border-4 border-blue-500/70 rounded-2xl shadow-inner"></div>
+                </div>
             </div>
 
             <canvas ref={canvasRef} hidden />
 
             <button
                 onClick={capture}
-                disabled={buttonText.includes("...")}
-                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                disabled={disabled || buttonText.includes("...")}
+                className="w-full bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed shadow"
             >
                 {buttonText}
             </button>
