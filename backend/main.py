@@ -5,6 +5,7 @@ from pydantic import BaseModel
 import base64
 import cv2
 import numpy as np
+import face_recognition
 
 app = FastAPI()
 
@@ -34,6 +35,8 @@ def decode_base64_image(data_url: str):
     except Exception:
         return None
 
+def to_rgb(image):
+    return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
 @app.get("/")
 def health():
@@ -49,3 +52,27 @@ def debug_image(payload: ImagePayload):
 
     h, w, _ = image.shape
     return {"width": w, "height": h}
+
+@app.post("/detect-face")
+def detect_face(payload: ImagePayload):
+    image = decode_base64_image(payload.image)
+
+    if image is None:
+        return {"error": "Invalid image"}
+
+    rgb_image = to_rgb(image)
+
+    face_locations = face_recognition.face_locations(rgb_image)
+
+    face_count = len(face_locations)
+
+    if face_count == 0:
+        return {"error": "No face detected"}
+
+    if face_count > 1:
+        return {"error": "Multiple faces detected"}
+
+    return {
+        "message": "One face detected",
+        "face_location": face_locations[0]
+    }
