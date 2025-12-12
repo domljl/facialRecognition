@@ -221,9 +221,12 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
         locations = face_recognition.face_locations(rgb)
 
         if len(locations) != 1:
-            raise HTTPException(status_code=400, detail="Exactly one face required")
+            continue
 
         enc = face_recognition.face_encodings(rgb, locations)
+        if len(enc) != 1:
+            continue
+
         embeddings.append(enc[0])
 
     if not embeddings:
@@ -270,28 +273,35 @@ def login_face(payload: LoginFaceRequest, db: Session = Depends(get_db)):
         face_locations = face_recognition.face_locations(rgb_image)
 
         if len(face_locations) != 1:
-            return {"error": "Exactly one face required"}
+            continue
 
         encodings = face_recognition.face_encodings(rgb_image, face_locations)
         if len(encodings) != 1:
-            return {"error": "Face encoding failed"}
+            continue
 
         embeddings.append(encodings[0])
 
     if not embeddings:
         return {"error": "No valid face found"}
 
-    login_embedding = embeddings[0]
     stored = np.array(json.loads(user.face_embedding))
 
-    distance = face_recognition.face_distance([stored], login_embedding)[0]
-    success = distance < 0.5
+    distances = [
+        float(face_recognition.face_distance([stored], emb)[0]) for emb in embeddings
+    ]
+    best_distance = min(distances)
+    success = best_distance < 0.5
 
     if not success:
-        return {"success": False, "distance": float(distance)}
+        return {"success": False, "distance": best_distance}
 
     token = create_access_token({"sub": user.username})
-    return {"success": True, "distance": float(distance), "access_token": token, "token_type": "bearer"}
+    return {
+        "success": True,
+        "distance": best_distance,
+        "access_token": token,
+        "token_type": "bearer",
+    }
 
 
 @app.get("/me")
