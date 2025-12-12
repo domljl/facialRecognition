@@ -17,10 +17,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+stored_embedding = None
 
 class ImagePayload(BaseModel):
     image: str
-
+    
+class ImagesPayload(BaseModel):
+    images: list[str]
 
 def decode_base64_image(data_url: str):
     try:
@@ -37,6 +40,10 @@ def decode_base64_image(data_url: str):
 
 def to_rgb(image):
     return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+def face_center(face_location):
+    top, right, bottom, left = face_location
+    return ((left + right) / 2, (top + bottom) / 2)
 
 @app.get("/")
 def health():
@@ -75,4 +82,65 @@ def detect_face(payload: ImagePayload):
     return {
         "message": "One face detected",
         "face_location": face_locations[0]
+    }
+    
+@app.post("/register-face")
+def register_face(payload: ImagesPayload):
+    global stored_embedding
+
+    centers = []
+    embeddings = []
+
+    for img_data in payload.images:
+        image = decode_base64_image(img_data)
+        if image is None:
+            continue
+
+        rgb = to_rgb(image)
+        locations = face_recognition.face_locations(rgb)
+
+        if len(locations) != 1:
+            return {"error": "Exactly one face required"}
+
+        centers.append(face_center(locations[0]))
+
+        enc = face_recognition.face_encodings(rgb, locations)
+        embeddings.append(enc[0])
+
+    if len(centers) < 2:
+        return {"error": "Liveness check failed"}
+
+    movement = abs(centers[0][0] - centers[-1][0])
+
+    if movement < 15:
+        return {"error": "Please move your head"}
+
+    stored_embedding = embeddings[0]
+    return {"message": "Face registered with liveness check"}
+
+@app.post("/login-face")
+def login_face(payload: ImagePayload):
+    if stored_embedding is None:
+        return {"error": "No face registered"}
+
+    image = decode_base64_image(payload.image)
+    if image is None:
+        return {"error": "Invalid image"}
+
+    rgb_image = to_rgb(image)
+
+    encodings = face_recognition.face_encodings(rgb_image)
+
+    if len(encodings) != 1:
+        return {"error": "Exactly one face required"}
+
+    login_embedding = encodings[0]
+
+    distance = face_recognition.face_distance(
+        [stored_embedding], login_embedding
+    )[0]
+
+    return {
+        "distance": float(distance),
+        "success": distance < 0.5
     }
