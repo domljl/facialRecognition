@@ -24,7 +24,7 @@ export default function Login() {
             const res = await fetch("http://localhost:8000/login-face", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, image: images[0] }),
+                body: JSON.stringify({ username, images }),
             });
 
             const data = await res.json();
@@ -73,7 +73,7 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-4">
+        <div className="min-h-screen flex items-center justify-center bg-slate-900 px-4">
             <div className="bg-white/95 backdrop-blur p-8 rounded-2xl shadow-2xl w-full max-w-2xl border border-slate-100">
                 <div className="flex justify-between items-center mb-4">
                     <Link to="/" className="text-sm text-blue-600 hover:underline">

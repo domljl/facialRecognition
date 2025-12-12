@@ -84,7 +84,7 @@ class LoginPasswordRequest(BaseModel):
 
 class LoginFaceRequest(BaseModel):
     username: str
-    image: str
+    images: list[str]
 
 
 class TokenResponse(BaseModel):
@@ -259,17 +259,26 @@ def login_face(payload: LoginFaceRequest, db: Session = Depends(get_db)):
     if user is None or user.face_embedding is None:
         return {"error": "User not found or no face registered"}
 
-    image = decode_base64_image(payload.image)
-    if image is None:
-        return {"error": "Invalid image"}
+    embeddings = []
 
-    rgb_image = to_rgb(image)
-    encodings = face_recognition.face_encodings(rgb_image)
+    for img_data in payload.images:
+        image = decode_base64_image(img_data)
+        if image is None:
+            continue
 
-    if len(encodings) != 1:
-        return {"error": "Exactly one face required"}
+        rgb_image = to_rgb(image)
+        face_locations = face_recognition.face_locations(rgb_image)
 
-    login_embedding = encodings[0]
+        if len(face_locations) != 1:
+            return {"error": "Exactly one face required"}
+
+        encodings = face_recognition.face_encodings(rgb_image, face_locations)
+        embeddings.append(encodings[0])
+
+    if not embeddings:
+        return {"error": "No valid face found"}
+
+    login_embedding = embeddings[0]
     stored = np.array(json.loads(user.face_embedding))
 
     distance = face_recognition.face_distance([stored], login_embedding)[0]
